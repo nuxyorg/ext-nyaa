@@ -32,6 +32,7 @@ vi.hoisted(() => {
     },
   }
   ;(globalThis as any).document = {
+    createTreeWalker: vi.fn(() => ({ nextNode: vi.fn() })),
     createTextNode(text: string) {
       return { nodeType: 3, textContent: text }
     },
@@ -63,8 +64,34 @@ vi.hoisted(() => {
   }
 })
 
+// Mock @nuxy/core package
+vi.mock('@nuxy/core', async () => {
+  const actual = await vi.importActual<typeof import('@nuxy/core')>('@nuxy/core')
+  return {
+    ...actual,
+    LitElement: class LitElementStub extends globalThis.HTMLElement {
+      requestUpdate = vi.fn()
+      updateComplete = Promise.resolve(true)
+      connectedCallback() {}
+      disconnectedCallback() {}
+    },
+    html: (strings: any, ...values: any[]) => strings,
+    css: (strings: any, ...values: any[]) => strings,
+    nothing: null,
+    customElement: (tag: string) => (ctor: any) => {
+      customElements.define(tag, ctor)
+      return ctor
+    },
+    property: () => () => {},
+    state: () => () => {},
+    query: () => () => {},
+    ref: (cb: any) => cb,
+    createRef: () => ({ current: null }),
+  }
+})
+
 import { resolveToolElementTag, validateCompositionClaim } from '@nuxy/core'
-import nyaaManifest from './manifest.json'
+import nyaaManifest from '../manifest.json'
 
 const shellManifest = {
   id: 'com.nuxy.shell',
@@ -86,13 +113,17 @@ describe('nyaa tool element manifest', () => {
     const result = validateCompositionClaim(nyaaManifest as any, 'omnibar-portal', shellManifest)
     expect(result).toEqual({ ok: true, maxMounts: 1 })
   })
+
+  it('declares returnToShellAndHide on primary action complete', () => {
+    expect(nyaaManifest.behavior?.onComplete).toBe('returnToShellAndHide')
+  })
 })
 
 describe('nuxy-tool-nyaa element', () => {
   beforeEach(async () => {
     vi.resetModules()
     customElements.registry.clear()
-    await import('./nuxy-tool-nyaa.ts')
+    await import('../frontend.ts')
   })
 
   afterEach(() => {
@@ -118,7 +149,7 @@ describe('nuxy-tool-nyaa element', () => {
 
     expect(el.query).toBe('ubuntu')
     expect(el.committedQuery).toBe('ubuntu iso')
-    expect(el.replaceChildren).toHaveBeenCalled()
+    expect(window.core.shell.registerKeyActions).toHaveBeenCalled()
   })
 
   it('cleans up on disconnect', () => {
@@ -126,7 +157,6 @@ describe('nuxy-tool-nyaa element', () => {
     const el = new Ctor() as HTMLElement
     el.connectedCallback()
     el.disconnectedCallback()
-    expect(el.replaceChildren).toHaveBeenCalled()
     expect(window.core.shell.registerActions).toHaveBeenCalledWith([])
   })
 })

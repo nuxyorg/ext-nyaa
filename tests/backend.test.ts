@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { type CoreContext, createMockCore } from '@nuxy/extension-sdk'
-import { register } from './backend.ts'
-import type { NyaaResult } from './types.ts'
+import { register } from '../backend.ts'
+import type { NyaaResult } from '../types.ts'
 
 const SAMPLE_HTML = `<!DOCTYPE html><html><body>
 <table class="torrent-list">
@@ -152,6 +152,26 @@ describe('nyaa backend', () => {
     it('throws when fetch response is not ok', async () => {
       mockFetch(false)
       await expect(handlers.search({ query: 'test' })).rejects.toThrow('HTTP 503')
+    })
+
+    it('aborts previous fetch when a new search starts', async () => {
+      const signals: AbortSignal[] = []
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockImplementation((_url: string, opts?: RequestInit) => {
+          if (opts?.signal) signals.push(opts.signal)
+          return new Promise<never>(() => {})
+        })
+      )
+
+      void handlers.search({ query: 'first' })
+      await new Promise<void>((r) => setTimeout(r, 0))
+
+      expect(signals[0]?.aborted).toBe(false)
+      void handlers.search({ query: 'second' })
+      await new Promise<void>((r) => setTimeout(r, 0))
+
+      expect(signals[0]?.aborted).toBe(true)
     })
 
     it('returns empty array when HTML has no torrent-list tbody', async () => {

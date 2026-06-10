@@ -1,7 +1,8 @@
 import type { ShellKeyAction } from '@nuxy/core'
-import { createStore, type Store } from '../ce-utils.ts'
-import { ceSpinner } from '../ui-ce.ts'
+import { createStore, type Store } from '../store.ts'
 import { createTranslator, type Translator } from '../shell-i18n.ts'
+import { completeToolAction } from '../tool-behavior.ts'
+import manifest from './manifest.json'
 import type { NyaaResult } from './types.ts'
 
 const EXT_ID = 'com.nuxy.nyaa'
@@ -122,7 +123,7 @@ export class NyaaController {
         this.store.setState({ copiedId: id })
         if (this.copiedTimer) clearTimeout(this.copiedTimer)
         this.copiedTimer = setTimeout(() => this.store.setState({ copiedId: null }), 2000)
-        setTimeout(() => window.core?.window?.hide?.(), 150)
+        completeToolAction(manifest)
       })
       .catch(() => {})
   }
@@ -130,21 +131,21 @@ export class NyaaController {
   handleDownloadTorrent(id: string): void {
     window.core.ipc
       .invoke(EXT_ID, 'downloadTorrent', { id })
-      .then(() => setTimeout(() => window.core?.window?.hide?.(), 150))
+      .then(() => completeToolAction(manifest))
       .catch(() => {})
   }
 
   handleCopyMagnets(items: Array<{ id: string; magnet: string }>): void {
     window.core.ipc
       .invoke(EXT_ID, 'copyMagnets', { magnets: items.map((i) => i.magnet) })
-      .then(() => setTimeout(() => window.core?.window?.hide?.(), 150))
+      .then(() => completeToolAction(manifest))
       .catch(() => {})
   }
 
   handleDownloadTorrents(ids: string[]): void {
     window.core.ipc
       .invoke(EXT_ID, 'downloadTorrents', { ids })
-      .then(() => setTimeout(() => window.core?.window?.hide?.(), 300))
+      .then(() => completeToolAction(manifest))
       .catch(() => {})
   }
 
@@ -175,7 +176,9 @@ export class NyaaController {
 
     const generation = ++this.searchGen
     this.store.setState({ error: null, loading: true })
-    this.setOmniBarPortal(ceSpinner('sm'))
+    const spinner = document.createElement('nuxy-spinner')
+    spinner.setAttribute('size', 'sm')
+    this.setOmniBarPortal(spinner)
 
     this.searchTimer = setTimeout(() => {
       if (generation !== this.searchGen) return

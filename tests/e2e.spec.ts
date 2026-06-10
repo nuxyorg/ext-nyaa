@@ -1,6 +1,6 @@
 // fallow-ignore-file code-duplication
-import { test, expect } from '../../src/e2e/fixtures.js'
-import { resetShell, openTool, typeInOmnibar, waitForToolMounted } from '../e2e-helpers.js'
+import { test, expect } from '../../../src/e2e/fixtures.js'
+import { resetShell, openTool, typeInOmnibar, waitForToolMounted } from '../../e2e-helpers.js'
 
 const MOCK_RESULTS = [
   {
@@ -45,7 +45,6 @@ async function installNyaaMock(appPage: any, electronApp: any) {
     ({ ipcMain }: any, { snapshot, results }: any) => {
       const originalHandler = (ipcMain as any)._invokeHandlers?.get?.('ext:invoke')
       if (originalHandler) (global as any).__nyaaOriginalHandler = originalHandler
-
       ;(ipcMain as any)._invokeHandlers?.set?.(
         'ext:invoke',
         async (_ev: any, extId: string, channel: string, payload: any) => {
