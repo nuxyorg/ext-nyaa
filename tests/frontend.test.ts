@@ -10,12 +10,27 @@ vi.hoisted(() => {
   }
   ;(globalThis as any).window = {
     core: {
-      ipc: { invoke: vi.fn().mockResolvedValue({ success: true, data: [] }) },
+      ipc: {
+        invoke: vi.fn(async (_ext: string, channel: string) => {
+          if (channel === 'getExtensionTranslations') {
+            return {
+              success: true,
+              data: {
+                locale: 'en',
+                dir: 'ltr',
+                translations: { 'search.placeholder': 'Search through Nyaa' },
+              },
+            }
+          }
+          return { success: true, data: [] }
+        }),
+      },
       shell: {
         registerKeyActions: vi.fn(),
         registerActions: vi.fn(),
         refreshKeyHints: vi.fn(),
         setOmniBarPortal: vi.fn(),
+        setSearchPlaceholder: vi.fn(),
       },
       events: { on: vi.fn(() => () => {}) },
     },
@@ -134,7 +149,7 @@ describe('nuxy-tool-nyaa element', () => {
     expect(customElements.get('nuxy-tool-nyaa')).toBeDefined()
   })
 
-  it('forwards query property to controller on updates', () => {
+  it('forwards query property to controller on updates', async () => {
     const Ctor = customElements.get('nuxy-tool-nyaa')!
     const el = new Ctor() as HTMLElement & {
       query: string
@@ -146,10 +161,12 @@ describe('nuxy-tool-nyaa element', () => {
     el.extensionId = 'com.nuxy.nyaa'
     el.query = 'ubuntu'
     el.committedQuery = 'ubuntu iso'
+    await new Promise((resolve) => setTimeout(resolve, 0))
 
     expect(el.query).toBe('ubuntu')
     expect(el.committedQuery).toBe('ubuntu iso')
     expect(window.core.shell.registerKeyActions).toHaveBeenCalled()
+    expect(window.core.shell.setSearchPlaceholder).toHaveBeenCalled()
   })
 
   it('cleans up on disconnect', () => {
