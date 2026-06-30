@@ -8,6 +8,6 @@
     "start": "nuxy-ext-dev"
   },
   "devDependencies": {
-    "@nuxyorg/ext-devserver": "workspace:*"
+    "@nuxyorg/ext-devserver": "^1.0.1"
   }
 }
